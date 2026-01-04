@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/R I B/bank-churn-mlops/mlruns/891713948115369493/5e51d7eaec0a48999e129160ea1b37c4/artifacts
+end_time: 1767545562204
+entry_point_name: ''
+experiment_id: '891713948115369493'
+lifecycle_stage: active
+run_id: 5e51d7eaec0a48999e129160ea1b37c4
+run_name: random-forest-v1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767545548075
+status: 3
+tags: []
+user_id: R I B
