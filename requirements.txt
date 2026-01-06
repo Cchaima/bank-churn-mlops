@@ -1,22 +1,9 @@
-# API Framework
-fastapi>=0.110.0
-uvicorn[standard]
-pydantic>=2.7.0
-
-# Machine Learning (Versions compatibles Python 3.13)
-scikit-learn>=1.5.0
-pandas>=2.2.0
-numpy>=2.0.0
-joblib>=1.4.0
+fastapi
+uvicorn
+pandas
+scikit-learn
 seaborn
-
-# MLflow
-mlflow>=2.15.0
-
-# Testing & Utilities
-pytest
-pytest-cov
-httpx
-python-multipart
+joblib
+streamlit
 requests
 opencensus-ext-azure
