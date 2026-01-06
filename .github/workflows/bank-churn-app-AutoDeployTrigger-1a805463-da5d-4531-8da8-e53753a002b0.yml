@@ -1,0 +1,49 @@
+name: Trigger auto deployment for bank-churn-app
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/bank-churn-app-AutoDeployTrigger-1a805463-da5d-4531-8da8-e53753a002b0.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.BANKCHURNAPP_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.BANKCHURNAPP_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.BANKCHURNAPP_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          _targetLabelKey_: _targetLabel_
+          registryUrl: churnregrib2026.azurecr.io
+          registryUsername: ${{ secrets.BANKCHURNAPP_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.BANKCHURNAPP_REGISTRY_PASSWORD }}
+          containerAppName: bank-churn-app
+          resourceGroup: bank-churn-v3-rg
+          imageToBuild: churnregrib2026.azurecr.io/bank-churn-app:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
