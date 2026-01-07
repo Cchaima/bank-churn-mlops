@@ -54,10 +54,11 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True, # Indispensable pour certaines requêtes Azure
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
-
 
 
 MODEL_PATH = os.getenv("MODEL_PATH", "model/churn_model.pkl")
@@ -253,8 +254,8 @@ def log_drift_to_insights(drift_results: dict):
 # DRIFT ENDPOINTS
 # ============================================================
 
-@app.post("/drift/check")
-def check_drift(threshold: float = 0.05):
+@app.post("/analyze/monitoring") 
+def check_drift(threshold: float = 0.05)
 
     try:
         results = detect_drift(
