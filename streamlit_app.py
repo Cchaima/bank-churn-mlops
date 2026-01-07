@@ -97,7 +97,7 @@ else:
         try:
             with st.spinner("Comparaison des distributions statistiques..."):
                 # On envoie le seuil en paramètre à l'API
-                response = requests.get(f"{DRIFT_URL}?threshold={threshold}")
+                response = requests.post(f"{DRIFT_URL}?threshold={threshold}")
                 show_debug_info(DRIFT_URL, response.status_code, response.text)
 
                 if response.status_code == 200:
