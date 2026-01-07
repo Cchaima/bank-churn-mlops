@@ -86,7 +86,7 @@ if page == "🔮 Prédiction Individuelle":
 # ==========================================
 # PAGE 2 : MONITORING & DRIFT
 # ==========================================
- st.title("🛡️ Monitoring du Drift")
+else: st.title("🛡️ Monitoring du Drift")
 
 # 1. Configuration du seuil
 threshold_choice = st.slider(
