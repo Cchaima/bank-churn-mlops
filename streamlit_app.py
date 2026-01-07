@@ -11,8 +11,9 @@ st.set_page_config(page_title="Bank Churn MLOps", page_icon="🏦", layout="wide
 # Sur Azure Container Apps (même conteneur), localhost:8000 est l'adresse de l'API FastAPI
 BASE_URL = "http://localhost:8000"
 API_URL = "https://bank-churn-app.grayplant-cb43b6b5.germanywestcentral.azurecontainerapps.io"
+
 PREDICT_URL = f"{BASE_URL}/predict"
-DRIFT_URL =f"{API_URL}/analyze/monitoring/"
+DRIFT_URL = f"{BASE_URL}/drift/check/"
 
 # Barre latérale pour la navigation
 st.sidebar.title("Navigation")
@@ -86,78 +87,66 @@ if page == "🔮 Prédiction Individuelle":
 # ==========================================
 # PAGE 2 : MONITORING & DRIFT
 # ==========================================
-else: st.title("🛡️ Monitoring du Drift")
-
-# 1. Configuration du seuil
-threshold_choice = st.slider(
-    "Sélectionner le seuil de significativité (p-value)", 
-    min_value=0.01, 
-    max_value=0.10, 
-    value=0.05, 
-    step=0.01,
-    help="Un seuil plus bas (ex: 0.01) est moins sensible au drift. Un seuil plus haut (ex: 0.10) est plus strict."
-)
-
-if st.button("🚀 Lancer la détection de Drift"):
-    try:
-        with st.spinner("Analyse des distributions en cours..."):
-            # Appel à l'API (POST)
-          response = requests.post(f"{API_URL}/analyze/monitoring", params={"threshold": threshold_choice})
-        if response.status_code == 200:
-            drift_data = response.json()
-            
-            # --- 1. Calcul des métriques globales ---
-            # Le format attendu est un dictionnaire de dictionnaires
-            total_features = len(drift_data)
-            # On compte les True dans 'drift_detected' pour chaque feature
-            drifted_features = sum(1 for f in drift_data.values() if isinstance(f, dict) and f.get('drift_detected'))
-            
-            # --- 2. Affichage des indicateurs clés ---
-            st.success("Analyse terminée avec succès.")
-            m1, m2, m3 = st.columns(3)
-            
-            m1.metric("Variables analysées", total_features)
-            m2.metric("Variables avec Drift", drifted_features, 
-                      delta=f"{drifted_features} alertes", 
-                      delta_color="inverse" if drifted_features > 0 else "normal")
-            
-            if drifted_features > 0:
-                m3.error("🚨 RÉENTRAÎNEMENT REQUIS")
-            else:
-                m3.success("✅ MODÈLE STABLE")
-
-            # --- 3. Tableau détaillé ---
-            st.divider()
-            st.subheader("Détails par variable (Test Kolmogorov-Smirnov)")
-            
-            # Transformation en DataFrame
-            df_drift = pd.DataFrame.from_dict(drift_data, orient='index')
-            df_drift.index.name = "Caractéristique"
-            df_drift = df_drift.reset_index()
-            
-            # Style du tableau
-            def color_drift(val):
-                color = '#ff4b4b' if val else '#09ab3b' # Rouge si True, Vert si False
-                return f'color: {color}; font-weight: bold'
-
-            st.table(df_drift.style.applymap(color_drift, subset=['drift_detected']))
-            
-            if drifted_features > 0:
-                st.warning("⚠️ Certaines variables montrent une distribution différente du dataset d'origine. Les prédictions pourraient être moins fiables.")
-        
-        else:
-            st.error(f"Erreur API {response.status_code}: {response.text}")
-
-    except Exception as e:
-        st.error(f"Impossible de joindre l'API : {e}")
-
-st.divider()
-with st.expander("ℹ️ Comprendre le Drift"):
-    st.write("""
-    Le **Data Drift** survient lorsque les données que le modèle reçoit en production 
-    deviennent trop différentes de celles utilisées pendant l'entraînement. 
+else:
+    st.title("📊 Monitoring de la Dérive (Data Drift)")
+    st.write("Cette page compare les données de production actuelles avec les données d'entraînement (référence).")
     
-    Nous utilisons ici le test de **Kolmogorov-Smirnov** :
-    - Si la **p-value** est inférieure au seuil choisi, nous rejetons l'hypothèse que les deux distributions sont identiques.
-    - **Action suggérée :** Collecter plus de données récentes et ré-entraîner le modèle.
-    """)
+    threshold = st.slider("Seuil de sensibilité (p-value)", 0.01, 0.10, 0.05, help="Un p-value plus petit que ce seuil indique un drift statistique.")
+        
+    if st.button("🚀 Lancer l'analyse de Drift"):
+        try:
+            with st.spinner("Comparaison des distributions statistiques..."):
+                # On envoie le seuil en paramètre à l'API
+                response = requests.get(f"{DRIFT_URL}?threshold={threshold}")
+                show_debug_info(DRIFT_URL, response.status_code, response.text)
+
+                if response.status_code == 200:
+                    results = response.json()
+                    
+                    # 1. Calcul des métriques globales
+                    drift_data = results
+                    total_features = len(drift_data)
+                    drifted_features = sum(1 for f in drift_data.values() if f['drift_detected'])
+                    
+                    # 2. Affichage des indicateurs clés
+                    st.success("Analyse terminée avec succès.")
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Variables analysées", total_features)
+                    m2.metric("Variables avec Drift", drifted_features, delta=drifted_features, delta_color="inverse")
+                    
+                    status_text = "🚨 ALERTE : RÉENTRAÎNEMENT REQUIS" if drifted_features > 0 else "✅ MODÈLE STABLE"
+                    m3.subheader(status_text)
+
+                    # 3. Tableau détaillé des résultats
+                    st.divider()
+                    st.subheader("Détails par variable (Test Kolmogorov-Smirnov)")
+                    
+                    # Transformation du dictionnaire en DataFrame pour l'affichage
+                    df_drift = pd.DataFrame.from_dict(drift_data, orient='index')
+                    df_drift.index.name = "Caractéristique"
+                    df_drift = df_drift.reset_index()
+                    
+                    # Mise en forme du tableau
+                    def color_drift(val):
+                        color = 'red' if val else 'green'
+                        return f'color: {color}; font-weight: bold'
+
+                    st.table(df_drift.style.applymap(color_drift, subset=['drift_detected']))
+                    
+                    if drifted_features > 0:
+                        st.warning("⚠️ Certaines variables montrent une distribution différente du dataset d'origine. Les prédictions pourraient être moins fiables.")
+                else:
+                    st.error(f"Erreur API {response.status_code}. Vérifiez si l'API est lancée et le fichier production_data.csv existe.")
+        except Exception as e:
+            st.error(f"Impossible de joindre l'API : {e}")
+
+    st.divider()
+    with st.expander("ℹ️ Comprendre le Drift"):
+        st.write("""
+        Le **Data Drift** survient lorsque les données que le modèle reçoit en production 
+        deviennent trop différentes de celles utilisées pendant l'entraînement. 
+        
+        Nous utilisons ici le test de **Kolmogorov-Smirnov** :
+        - Si la **p-value** est inférieure au seuil choisi, nous rejetons l'hypothèse que les deux distributions sont identiques.
+        - **Action suggérée :** Collecter plus de données récentes et ré-entraîner le modèle.
+        """)
