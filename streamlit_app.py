@@ -10,7 +10,7 @@ st.set_page_config(page_title="Bank Churn MLOps", page_icon="🏦", layout="wide
 # ==========================================
 # Sur Azure Container Apps (même conteneur), localhost:8000 est l'adresse de l'API FastAPI
 BASE_URL = "http://localhost:8000"
-
+API_URL = "https://bank-churn-app.grayplant-cb43b6b5.germanywestcentral.azurecontainerapps.io"
 PREDICT_URL = f"{BASE_URL}/predict"
 DRIFT_URL = f"{BASE_URL}/drift/check"
 
