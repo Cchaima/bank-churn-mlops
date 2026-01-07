@@ -12,7 +12,7 @@ st.set_page_config(page_title="Bank Churn MLOps", page_icon="🏦", layout="wide
 BASE_URL = "http://localhost:8000"
 API_URL = "https://bank-churn-app.grayplant-cb43b6b5.germanywestcentral.azurecontainerapps.io"
 PREDICT_URL = f"{BASE_URL}/predict"
-DRIFT_URL = f"{API_URL}/drift/check/"
+DRIFT_URL =f"{API_URL}/analyze/monitoring/"
 
 # Barre latérale pour la navigation
 st.sidebar.title("Navigation")
@@ -86,7 +86,7 @@ if page == "🔮 Prédiction Individuelle":
 # ==========================================
 # PAGE 2 : MONITORING & DRIFT
 # ==========================================
-else: st.title("🛡️ Monitoring du Drift")
+ st.title("🛡️ Monitoring du Drift")
 
 # 1. Configuration du seuil
 threshold_choice = st.slider(
@@ -102,12 +102,7 @@ if st.button("🚀 Lancer la détection de Drift"):
     try:
         with st.spinner("Analyse des distributions en cours..."):
             # Appel à l'API (POST)
-            response = requests.post(
-                f"{API_URL}/drift/check", 
-                params={"threshold": threshold_choice},
-                timeout=30
-            )
-        
+          response = requests.post(f"{API_URL}/analyze/monitoring", params={"threshold": threshold_choice})
         if response.status_code == 200:
             drift_data = response.json()
             
