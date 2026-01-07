@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # =========================================
 # CONFIGURATION
 # =========================================
-API_BASE_URL = "https://bank-churn.ashybay-fc2e9f26.westeurope.azurecontainerapps.io"
+API_BASE_URL = "https://bank-churn-app.grayplant-cb43b6b5.germanywestcentral.azurecontainerapps.io"
 # Pour local :
 # API_BASE_URL = "http://localhost:8000"
 
