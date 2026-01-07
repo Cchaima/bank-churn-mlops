@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import numpy as np
 from app.models import CustomerFeatures
-from app.drift_detection import detect_drift # Import de ton script
+from app.drift_detect import detect_drift
 
 app = FastAPI(title="Bank Churn API")
 
