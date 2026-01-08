@@ -89,64 +89,80 @@ if page == "🔮 Prédiction Individuelle":
 # ==========================================
 else:
     st.title("📊 Monitoring de la Dérive (Data Drift)")
-    st.write("Cette page compare les données de production actuelles avec les données d'entraînement (référence).")
-    
-    threshold = st.slider("Seuil de sensibilité (p-value)", 0.01, 0.10, 0.05, help="Un p-value plus petit que ce seuil indique un drift statistique.")
-        
+    st.write("Cette page compare les données de production actuelles avec les données d'entraînement.")
+
+    # 1. Configuration du seuil
+    threshold = st.slider(
+        "Seuil de sensibilité (p-value)", 
+        0.01, 0.10, 0.05, 
+        help="Un p-value plus petit que ce seuil indique un drift statistique."
+    )
+
     if st.button("🚀 Lancer l'analyse de Drift"):
         try:
-            with st.spinner("Comparaison des distributions statistiques..."):
-                # On envoie le seuil en paramètre à l'API
-                response = requests.post(f"{DRIFT_URL}?threshold={threshold}")
-                show_debug_info(DRIFT_URL, response.status_code, response.text)
+            with st.spinner("Analyse statistique en cours sur Azure..."):
+                # Nettoyage de l'URL pour éviter les doubles slashes ou slashes finaux
+                url_clean = DRIFT_URL.rstrip('/')
+                
+                # Utilisation de 'params' pour passer le threshold proprement
+                response = requests.post(url_clean, params={"threshold": threshold}, timeout=30)
 
-                if response.status_code == 200:
-                    results = response.json()
+            # Vérification du statut HTTP
+            if response.status_code == 200:
+                results = response.json()
+
+                # SÉCURITÉ : On vérifie que 'results' est bien un dictionnaire
+                if isinstance(results, dict) and len(results) > 0:
+                    st.success("✅ Analyse terminée avec succès.")
                     
-                    # 1. Calcul des métriques globales
-                    drift_data = results
-                    total_features = len(drift_data)
-                    drifted_features = sum(1 for f in drift_data.values() if f['drift_detected'])
+                    # 1. Calcul des métriques
+                    total_features = len(results)
+                    # On utilise .get() pour éviter les erreurs de clés manquantes
+                    drifted_features = sum(1 for f in results.values() if isinstance(f, dict) and f.get('drift_detected', False))
                     
-                    # 2. Affichage des indicateurs clés
-                    st.success("Analyse terminée avec succès.")
+                    # 2. Affichage des indicateurs
                     m1, m2, m3 = st.columns(3)
                     m1.metric("Variables analysées", total_features)
                     m2.metric("Variables avec Drift", drifted_features, delta=drifted_features, delta_color="inverse")
                     
-                    status_text = "🚨 ALERTE : RÉENTRAÎNEMENT REQUIS" if drifted_features > 0 else "✅ MODÈLE STABLE"
-                    m3.subheader(status_text)
+                    if drifted_features > 0:
+                        m3.error("🚨 RÉENTRAÎNEMENT REQUIS")
+                    else:
+                        m3.success("✅ MODÈLE STABLE")
 
-                    # 3. Tableau détaillé des résultats
+                    # 3. Tableau détaillé
                     st.divider()
                     st.subheader("Détails par variable (Test Kolmogorov-Smirnov)")
                     
-                    # Transformation du dictionnaire en DataFrame pour l'affichage
-                    df_drift = pd.DataFrame.from_dict(drift_data, orient='index')
+                    df_drift = pd.DataFrame.from_dict(results, orient='index')
                     df_drift.index.name = "Caractéristique"
                     df_drift = df_drift.reset_index()
                     
-                    # Mise en forme du tableau
+                    # Style conditionnel
                     def color_drift(val):
-                        color = 'red' if val else 'green'
-                        return f'color: {color}; font-weight: bold'
+                        return 'color: #ff4b4b; font-weight: bold' if val else 'color: #09ab3b'
 
                     st.table(df_drift.style.applymap(color_drift, subset=['drift_detected']))
                     
                     if drifted_features > 0:
-                        st.warning("⚠️ Certaines variables montrent une distribution différente du dataset d'origine. Les prédictions pourraient être moins fiables.")
+                        st.warning("⚠️ Dérive détectée : les distributions de production divergent des données historiques.")
                 else:
-                    st.error(f"Erreur API {response.status_code}. Vérifiez si l'API est lancée et le fichier production_data.csv existe.")
+                    st.error("L'API a renvoyé un format de données vide ou invalide.")
+            
+            elif response.status_code == 405:
+                st.error("Erreur 405 : La méthode POST n'est pas autorisée sur cet URL. Vérifiez la config de l'API.")
+            else:
+                st.error(f"Erreur API {response.status_code} : {response.text}")
+
         except Exception as e:
-            st.error(f"Impossible de joindre l'API : {e}")
+            st.error(f"Erreur de connexion : {e}")
 
     st.divider()
     with st.expander("ℹ️ Comprendre le Drift"):
         st.write("""
-        Le **Data Drift** survient lorsque les données que le modèle reçoit en production 
-        deviennent trop différentes de celles utilisées pendant l'entraînement. 
+        Le **Data Drift** survient lorsque les données reçues en production deviennent trop différentes de celles de l'entraînement. 
         
-        Nous utilisons ici le test de **Kolmogorov-Smirnov** :
-        - Si la **p-value** est inférieure au seuil choisi, nous rejetons l'hypothèse que les deux distributions sont identiques.
-        - **Action suggérée :** Collecter plus de données récentes et ré-entraîner le modèle.
+        **Méthode :** Test de Kolmogorov-Smirnov.
+        - **p-value < seuil :** On rejette l'idée que les données sont identiques (Drift détecté).
+        - **Action :** Si le drift est élevé, une mise à jour du modèle est nécessaire.
         """)
